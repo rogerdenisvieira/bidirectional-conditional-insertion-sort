@@ -7,16 +7,28 @@ import sys, os, csv, io
 
 #############################################################
 #                                                           #
+#                   Algorithm Parameters                    #
+#                                                           #
+#############################################################
+
+TEST_SIZE = 7000 # max distribution size = 10k
+STEP = 1
+REPORT_FILENAME = 'ratios.csv'
+DISTRIBUTIONS_FILENAME = 'distributions.csv'
+
+#############################################################
+#                                                           #
 #              Data Preparation and Setup                   #
 #                                                           #
 #############################################################
 
-TEST_SIZE = 100 # max distribution size
+distributions = pd.read_csv(DISTRIBUTIONS_FILENAME)
 
-uniform_dist = np.random.uniform(-1,1,TEST_SIZE),
-binominal_dist = np.random.binomial(1000, .5, TEST_SIZE),
-poisson_dist = np.random.poisson(1000, TEST_SIZE),
-normal_dist = np.random.normal(0, .1, TEST_SIZE)
+uniform_dist = distributions['uniform']
+binominal_dist = distributions['binominal']
+poisson_dist = distributions['poisson']
+normal_dist = distributions['normal']
+real_dist = distributions['real']
 
 bcis_sorter = BCIS()
 qs_sorter = QS()
@@ -24,15 +36,13 @@ is_sorter = IS()
 
 final_results = []
 
-
-
 # a workaround to avoid Python's recursion limit
-sys.setrecursionlimit(6100)
+sys.setrecursionlimit(TEST_SIZE+100)
 
 
 def write_report(values):
-    filename = 'ratios.csv'
-    fieldnames = ['name', 'size', 'bcis', 'qs', 'is','bcis/qs','bcis/is']
+    filename = REPORT_FILENAME
+    fieldnames = ['array_size', 'uniform_bcis', 'uniform_qs', 'uniform_is', 'uniform_bcis/qs', 'uniform_bcis/is', 'binomial_bcis', 'binomial_qs', 'binomial_is', 'binomial_bcis/qs', 'binomial_bcis/is', 'poisson_bcis', 'poisson_qs', 'poisson_is', 'poisson_bcis/qs', 'poisson_bcis/is', 'normal_bcis', 'normal_qs', 'normal_is', 'normal_bcis/qs', 'normal_bcis/is','real_bcis', 'real_qs', 'real_is', 'real_bcis/qs', 'real_bcis/is']
     print('Writings report...')
 
     try:
@@ -73,7 +83,9 @@ def calc_execution_elapsed_times(distribution):
     return {
         'bcis' : elapsed_time_bcis,
         'qs' : elapsed_time_qs,
-        'is' : elapsed_time_is
+        'is' : elapsed_time_is,
+        'bcis/qs' : (elapsed_time_bcis/elapsed_time_qs),
+        'bcis/is' : (elapsed_time_bcis/elapsed_time_is)
     }
 
 
@@ -84,41 +96,61 @@ def calc_execution_elapsed_times(distribution):
 #                                                           #
 #############################################################
 
-# executing comparisons throught N trials
-for i in range(0, TEST_SIZE, 1):
+try:
 
-    #distributions = {
-    #    'uniform_dist' : np.random.uniform(-1,1,i),
-    #    'binominal_dist' : np.random.binomial(1000, .5, i),
-    #    'poisson_dist' : np.random.poisson(1000, i),
-    #    'normal_dist' : np.random.normal(0, .1, i)
-    #}
+    # executing comparisons throught N trials
+    for i in range(STEP, TEST_SIZE, STEP):
 
-
-
-    uniform_dist_partial_results = calc_execution_elapsed_times(uniform_dist[0:i])
-    binominal_dist_partial_results = calc_execution_elapsed_times(uniform_dist[0:i])
-    poisson_dist_partial_results = calc_execution_elapsed_times(uniform_dist[0:i])
-    normal_dist_partial_results = calc_execution_elapsed_times(uniform_dist[0:i])
-
-    print("Size: {0}".format(len(uniform_dist[0:i])))
+        uniform_res = calc_execution_elapsed_times(uniform_dist[0:i])
+        binominal_res = calc_execution_elapsed_times(binominal_dist[0:i])
+        poisson_res = calc_execution_elapsed_times(poisson_dist[0:i])
+        normal_res = calc_execution_elapsed_times(normal_dist[0:i])
+        real_res = calc_execution_elapsed_times(real_dist[0:i])
 
 
-    #print("{0} # {1} # {2} # {3}".format(
-    #    uniform_dist_partial_results,
-    #    binominal_dist_partial_results,
-    #    poisson_dist_partial_results,
-    #    normal_dist_partial_results
-    #))
+        partial_result = {
+            'array_size' : i,
+
+            'uniform_bcis' : uniform_res['bcis'],
+            'uniform_qs' : uniform_res['qs'],
+            'uniform_is' : uniform_res['is'],
+            'uniform_bcis/qs' : uniform_res['bcis/qs'],
+            'uniform_bcis/is' : uniform_res['bcis/is'],
+
+            'binomial_bcis' : binominal_res['bcis'],
+            'binomial_qs' : binominal_res['qs'],
+            'binomial_is' : binominal_res['is'],
+            'binomial_bcis/qs' : binominal_res['bcis/qs'],
+            'binomial_bcis/is' : binominal_res['bcis/is'],
+
+            'poisson_bcis' : poisson_res['bcis'],
+            'poisson_qs' : poisson_res['qs'],
+            'poisson_is' : poisson_res['is'],
+            'poisson_bcis/qs' : poisson_res['bcis/qs'],
+            'poisson_bcis/is' : poisson_res['bcis/is'],
+
+            'normal_bcis' : normal_res['bcis'],
+            'normal_qs' : normal_res['qs'],
+            'normal_is' : normal_res['is'],
+            'normal_bcis/qs' : normal_res['bcis/qs'],
+            'normal_bcis/is' : normal_res['bcis/is'],
+
+            'real_bcis' : real_res['bcis'],
+            'real_qs' : real_res['qs'],
+            'real_is' : real_res['is'],
+            'real_bcis/qs' : real_res['bcis/qs'],
+            'real_bcis/is' : real_res['bcis/is']
+        }
 
 
+        final_results.append(partial_result)
+        
+        if i%10 == 0:
+            print("Array size: {0}".format(i))
 
-    
-    if i%10 == 0:
-        print("Array size: {0}".format(i))
-
-
-#print(total_ratios)
-write_report(final_results)
+except:
+    print("An error has been occurred")
+finally:
+    write_report(final_results)
 
 
